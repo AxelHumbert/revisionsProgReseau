@@ -86,31 +86,28 @@ public class ClientPokemon {
           datagramChannel.receive(bufferIn);
           bufferIn.flip();
 
-          System.out.println(bufferIn.remaining());
-          var pokemonSize = bufferIn.getInt();
-          if (pokemonSize <= 2044) {
+          var buffer = ByteBuffer.allocate(1024);
+          byte trunk = 0;
+          var pokemonName = pokemon;
 
-            System.out.println(pokemon);
-            var oldLimit = bufferIn.limit();
-            bufferIn.limit(bufferIn.position() + pokemonSize);
-            var pokemonName = UTF8.decode(bufferIn);
-            bufferIn.limit(oldLimit);
-
-            System.out.println(bufferIn.remaining());
-            //byte trunk = 0;
-            while (bufferIn.hasRemaining()) {
-              bufferIn.get();
-              var sizeCharacteristic = bufferIn.getInt();
-              oldLimit = bufferIn.limit();
-              bufferIn.limit(bufferIn.position() + sizeCharacteristic);
-              var pokemonCharacteristic = UTF8.decode(bufferIn);
-              bufferIn.limit(oldLimit);
-              characteristics.put(pokemonCharacteristic.toString(), bufferIn.getInt());
+          while (bufferIn.hasRemaining()) {
+            var cursor = bufferIn.get();
+            if (cursor != trunk) {
+              buffer.put(cursor);
+            } else {
+              buffer.flip();
+              var decodedString = UTF8.decode(buffer).toString();
+              if (decodedString.equals(pokemon)) {
+                pokemonName = decodedString;
+              } else {
+                characteristics.put(decodedString, bufferIn.getInt());
+              }
+              buffer.clear();
             }
-
-            pokemons.add(new Pokemon(pokemonName.toString(), characteristics));
-            bufferIn.clear();
           }
+
+          pokemons.add(new Pokemon(pokemonName, characteristics));
+          bufferIn.clear();
         }
       }
 
